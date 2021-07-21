@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"sync"
 
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-apps/apps"
+	"github.com/mattermost/mattermost-plugin-apps/apps/mmclient"
+	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 )
 
@@ -20,9 +22,27 @@ type Plugin struct {
 	configuration *configuration
 }
 
-// ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
-func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello, world!")
+func (p *Plugin) OnActivate() error {
+	appsPluginClient := mmclient.NewAppsPluginAPIClientFromPluginAPI(&pluginapi.NewClient(p.API, p.Driver).Plugin)
+	s := p.API.GetConfig().ServiceSettings.SiteURL
+	manifest := getManifest(*s)
+
+	err := appsPluginClient.InstallApp(manifest)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Plugin) ephemeral(c *apps.CallRequest, message string) {
+	post := &model.Post{
+		UserId:    c.Context.BotUserID,
+		Message:   message,
+		ChannelId: c.Context.ChannelID,
+	}
+
+	p.API.SendEphemeralPost(c.Context.ActingUserID, post)
 }
 
 // See https://developers.mattermost.com/extend/plugins/server/reference/
