@@ -66,8 +66,8 @@ var dylanCommand = &BindingEntry{
 		Location:    "dylan",
 		Label:       "dylan",
 		Description: "Build a plugin from a PR",
+		Call:        apps.NewCall("/commands/dylan"),
 		Form: &apps.Form{
-			Call: apps.NewCall("/commands/dylan"),
 			Fields: []*apps.Field{
 				{
 					Name:        "pr",
