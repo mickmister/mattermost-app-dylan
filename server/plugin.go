@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"time"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-apps/apps"
@@ -23,14 +24,18 @@ type Plugin struct {
 }
 
 func (p *Plugin) OnActivate() error {
-	appsPluginClient := mmclient.NewAppsPluginAPIClientFromPluginAPI(&pluginapi.NewClient(p.API, p.Driver).Plugin)
-	s := p.API.GetConfig().ServiceSettings.SiteURL
-	manifest := getManifest(*s)
+	go func() {
+		time.Sleep(3 * time.Second)
+		appsPluginClient := mmclient.NewAppsPluginAPIClientFromPluginAPI(&pluginapi.NewClient(p.API, p.Driver).Plugin)
+		s := p.API.GetConfig().ServiceSettings.SiteURL
+		manifest := getManifest(*s)
 
-	err := appsPluginClient.InstallApp(manifest)
-	if err != nil {
-		return err
-	}
+		err := appsPluginClient.InstallApp(manifest)
+		if err != nil {
+			ptof(err.Error())
+			// return err
+		}
+	}()
 
 	return nil
 }

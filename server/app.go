@@ -4,8 +4,11 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -13,26 +16,22 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-apps/apps"
 	"github.com/mattermost/mattermost-plugin-apps/utils/httputils"
-	"github.com/mattermost/mattermost-plugin-apps/utils/md"
 	"github.com/pkg/errors"
 )
 
-// Disabling icon due to error during OnActivate:
-// Unable to restart plugin on upgrade., hm2: AppErrorFromJson: model.utils.decode_json.app_error, body: failed set bot icon: update profile icon: not found
-// disabled go:embed dylan.jpg
+// go:embed server/dylan.jpg
 var iconData []byte
 
 func getManifest(siteURL string) apps.Manifest {
 	var manifest = apps.Manifest{
 		AppID:       "dylan",
+		PluginID:    "dylan",
 		DisplayName: "Dylan Testing App",
 		HomepageURL: "https://github.com/mickmister/mattermost-app-dylan",
 		AppType:     apps.AppTypePlugin,
-		// Icon:                 "dylan.jpg",
+		Icon:        "dylan.jpg",
 		RequestedPermissions: apps.Permissions{
-			// Including this permission is causing this error during OnActivate
-			// Failed: failed to upload plugin bundle: : Unable to restart plugin on upgrade., hm2: AppErrorFromJson: model.utils.decode_json.app_error, body: failed to create bot user's access token: not found
-			// apps.PermissionActAsBot,
+			apps.PermissionActAsBot,
 		},
 		RequestedLocations: apps.Locations{
 			apps.LocationCommand,
@@ -49,7 +48,23 @@ func (p *Plugin) handleManifest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) handleStatic(w http.ResponseWriter, r *http.Request) {
-	w.Write(iconData)
+	ptof("Serving icon")
+	bundlePath, err := p.API.GetBundlePath()
+	if err != nil {
+		p.API.LogError("Error getting bundle path", "err", err.Error())
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	iconBytes, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "dylan.jpg"))
+	if err != nil {
+		p.API.LogError("Error reading static icon", "err", err.Error())
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/jpg")
+	w.Write(iconBytes)
 }
 
 var register = &BindingRegister{}
@@ -94,12 +109,12 @@ func handleForm(c *apps.CallRequest, p *Plugin) *apps.CallResponse {
 		name, _ = repo["value"].(string)
 	}
 
-	prs, err := getPRs(name, c.Query)
+	prs, err := getPRs(p.getGitHubClient(), name, c.Query)
 	if err != nil {
 		return apps.NewErrorCallResponse(err)
 	}
 
-	repos, err := getRepoNames()
+	repos, err := getRepoNames(p.getGitHubClient())
 	if err != nil {
 		return apps.NewErrorCallResponse(err)
 	}
@@ -202,6 +217,6 @@ func handleSubmit(c *apps.CallRequest, p *Plugin) *apps.CallResponse {
 	}
 
 	return &apps.CallResponse{
-		Markdown: md.Markdownf("Built plugin and deployed this server for PR %s", prURL),
+		Markdown: fmt.Sprintf("Built plugin and deployed this server for PR %s", prURL),
 	}
 }

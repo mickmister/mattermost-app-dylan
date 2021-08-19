@@ -8,14 +8,28 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-plugin-apps/apps"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 )
 
-func getPRs(repo, query string) ([]apps.SelectOption, error) {
+func (p *Plugin) getGitHubClient() *github.Client {
+	token := p.getConfiguration().GitHubAccessToken
+	if token == "" {
+		return github.NewClient(nil)
+	}
+
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: token},
+	)
+	tc := oauth2.NewClient(context.Background(), ts)
+
+	return github.NewClient(tc)
+}
+
+func getPRs(client *github.Client, repo, query string) ([]apps.SelectOption, error) {
 	if repo == "" {
 		return []apps.SelectOption{}, nil
 	}
 
-	client := github.NewClient(nil)
 	fullQuery := "is:pr is:open repo:mattermost/" + repo + " " + query
 	prs, _, err := client.Search.Issues(context.Background(), fullQuery, nil)
 	if err != nil {
@@ -34,8 +48,7 @@ func getPRs(repo, query string) ([]apps.SelectOption, error) {
 	return opts, nil
 }
 
-func getRepoNames() ([]apps.SelectOption, error) {
-	client := github.NewClient(nil)
+func getRepoNames(client *github.Client) ([]apps.SelectOption, error) {
 	repos, _, err := client.Search.Repositories(context.Background(), "org:mattermost repo:mattermost-plugin-", &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to fetch repos")
