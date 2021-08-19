@@ -26,6 +26,7 @@ func getManifest(siteURL string) apps.Manifest {
 	var manifest = apps.Manifest{
 		AppID:       "dylan",
 		DisplayName: "Dylan Testing App",
+		HomepageURL: "https://github.com/mickmister/mattermost-app-dylan",
 		AppType:     apps.AppTypePlugin,
 		// Icon:                 "dylan.jpg",
 		RequestedPermissions: apps.Permissions{
