@@ -19,6 +19,14 @@
     "settings_schema": {
         "header": "",
         "footer": "",
-        "settings": []
+        "settings": [
+            {
+                "key": "GitHubAccessToken",
+                "display_name": "GitHub Access Token",
+                "type": "text",
+                "help_text": "Get your token here https://github.com/settings/tokens! You only need the repo:public_repo permission.",
+                "default": ""
+            }
+        ]
     }
 }
